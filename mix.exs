@@ -20,7 +20,9 @@ defmodule PlugServerTiming.MixProject do
       package: [
         source_ref: @version,
         licenses: ["MIT"],
-        links: %{}
+        links: %{
+          "GitHub" => "https://github.com/hauleth/plug_telemetry_server_timing"
+        }
       ]
     ]
   end
@@ -33,8 +35,8 @@ defmodule PlugServerTiming.MixProject do
     [
       {:telemetry, "~> 0.4.0"},
       {:plug, "~> 1.0"},
-
-      {:ex_doc, ">= 0.0.0", only: [:dev]}
+      {:ex_doc, ">= 0.0.0", only: [:dev]},
+      {:credo, ">= 0.0.0", only: [:dev]}
     ]
   end
 end
