@@ -39,6 +39,14 @@ defmodule Plug.Telemetry.ServerTiming do
   This will not respond with events that happened in separate processes, only
   events that happened in the Plug process will be recorded.
 
+  ### WARNING
+
+  Current specification of `Server-Timing` do not provide a way to specify event
+  start time, which mean, that the data displayed in the DevTools isn't trace
+  report (like the content of the "regular" HTTP timings) but raw dump of the data
+  displayed as a bars. This can be a little bit confusing, but right now there is
+  nothing I can do about it.
+
   [st]: https://w3c.github.io/server-timing/#the-server-timing-header-field
   """
 

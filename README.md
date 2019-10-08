@@ -40,6 +40,14 @@ in Google Chrome:
 
 ![](assets/example.png)
 
+## WARNING
+
+Current specification of `Server-Timing` do not provide a way to specify event
+start time, which mean, that the data displayed in the DevTools isn't trace
+report (like the content of the "regular" HTTP timings) but raw dump of the data
+displayed as a bars. This can be a little bit confusing, but right now there is
+nothing I can do about it.
+
 ## License
 
 MIT License
