@@ -16,6 +16,11 @@ defmodule PlugServerTiming.MixProject do
         assets: "assets/",
         extras: ["README.md"],
         main: "readme"
+      ],
+      package: [
+        source_ref: @version,
+        licenses: ["MIT"],
+        links: %{}
       ]
     ]
   end

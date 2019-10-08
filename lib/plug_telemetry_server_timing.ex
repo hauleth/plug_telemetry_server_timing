@@ -11,14 +11,14 @@ defmodule Plug.Telemetry.ServerTiming do
   Just add it as a plug into your pipeline:
 
   ```
-  plug Plug.ServerTiming
+  plug Plug.Telemetry.ServerTiming
   ```
 
   And call `install/1` with list of `{event_name, measurement}` in your
   application startup, for example for Phoenix and Ecto application:
 
   ```
-  Plug.ServerTiming.install([
+  Plug.Telemetry.ServerTiming.install([
     {[:phoenix, :endpoint, :stop], :duration},
     {[:my_app, :repo, :query], :queue_time},
     {[:my_app, :repo, :query], :query_time},
