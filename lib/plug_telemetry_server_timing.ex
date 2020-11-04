@@ -19,10 +19,10 @@ defmodule Plug.Telemetry.ServerTiming do
 
   ```
   Plug.Telemetry.ServerTiming.install([
-    {[:phoenix, :endpoint, :stop], :duration},
-    {[:my_app, :repo, :query], :queue_time},
-    {[:my_app, :repo, :query], :query_time},
-    {[:my_app, :repo, :query], :decode_time}
+    {[:phoenix, :endpoint, :stop], :duration, "Router Request"},
+    {[:my_app, :repo, :query], :queue_time, "Ecto Queue"},
+    {[:my_app, :repo, :query], :query_time, "Ecto Query"},
+    {[:my_app, :repo, :query], :decode_time, "Ecto Decode"}
   ])
   ```
 
@@ -67,17 +67,17 @@ defmodule Plug.Telemetry.ServerTiming do
   @doc """
   Define which events should be available within response headers.
   """
-  @spec install(events) :: :ok when events: map() | [{:telemetry.event_name(), atom()}]
+  @spec install(events) :: :ok when events: map() | [{:telemetry.event_name(), atom(), String.t}]
   def install(events) do
-    for {name, metric} <- events do
-      :ok = :telemetry.attach({__MODULE__, name, metric}, name, &__MODULE__.__handle__/4, metric)
+    for {name, metric, description} <- events do
+      :ok = :telemetry.attach({__MODULE__, name, metric}, name, &__MODULE__.__handle__/4, metric, description)
     end
 
     :ok
   end
 
   @doc false
-  def __handle__(metric_name, measurements, _metadata, metric) do
+  def __handle__(metric_name, measurements, _metadata, metric, description) do
     with %{^metric => duration} <- measurements,
          {true, data} <- Process.get(__MODULE__) do
       Process.put(
