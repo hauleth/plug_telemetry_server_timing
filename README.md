@@ -26,13 +26,6 @@ plug Plug.Telemetry.ServerTiming
 plug Plug.Telemetry, event_prefix: [:my, :plug]
 ```
 
-And then you need to install metrics you will want to see in the DevTools:
-
-```elixir
-Plug.Telemetry.ServerTiming.install([
-  {[:my, :plug, :stop], :duration}
-])
-```
 
 Now when you will open given page in [browsers with support for
 `Server-Timing`][caniuse] you will be able to see the data in DevTools, example
