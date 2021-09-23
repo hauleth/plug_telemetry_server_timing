@@ -3,11 +3,12 @@ defmodule PlugServerTiming.MixProject do
 
   def project do
     ver = version()
+
     [
       app: :plug_telemetry_server_timing,
       version: ver,
       description: "Plug for providing Telemetry metrics within browser DevTools",
-      elixir: "~> 1.9",
+      elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       source_url: "https://github.com/hauleth/plug_telemetry_server_timing",
@@ -47,8 +48,7 @@ defmodule PlugServerTiming.MixProject do
 
   defp version do
     with :error <- hex_version(),
-         :error <- git_version()
-    do
+         :error <- git_version() do
       "0.0.0-dev"
     else
       {:ok, ver} -> ver

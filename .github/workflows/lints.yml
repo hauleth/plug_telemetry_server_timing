@@ -1,28 +1,47 @@
 name: Lints CI
 
-on: [pull_request]
+on:
+  pull_request:
+    branches: [ master ]
 
 jobs:
+
   credo:
     runs-on: ubuntu-latest
-    container:
-      image: elixir:1.9.1-slim
     steps:
-    - uses: actions/checkout@v1
-    - name: Install Dependencies
-      run: |
-        mix local.rebar --force
-        mix local.hex --force
-        mix deps.get
-    - name: Run Credo
-      uses: hauleth/reviewdog-action-credo@v1
+    - uses: actions/checkout@v2
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
       with:
-        github_token: ${{ secrets.github_token }}
+        elixir-version: '1.10.3'
+        otp-version: '22.3'
+    - name: Restore dependencies cache
+      uses: actions/cache@v2
+      with:
+        path: deps
+        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+        restore-keys: ${{ runner.os }}-mix-
+    - name: Install dependencies
+      run: mix deps.get
+    - name: Run tests
+      run: mix credo
+
   format:
     runs-on: ubuntu-latest
-    container:
-      image: elixir:1.9.1-slim
     steps:
-    - uses: actions/checkout@v1
-    - name: Check format
+    - uses: actions/checkout@v2
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        elixir-version: '1.10.3'
+        otp-version: '22.3'
+    - name: Restore dependencies cache
+      uses: actions/cache@v2
+      with:
+        path: deps
+        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+        restore-keys: ${{ runner.os }}-mix-
+    - name: Install dependencies
+      run: mix deps.get
+    - name: Run tests
       run: mix format --check-formatted
