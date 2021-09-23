@@ -66,7 +66,7 @@ defmodule PlugServerTiming.MixProject do
   defp git_version do
     System.cmd("git", ~w[describe])
   else
-    {0, ver} -> {:ok, String.trim(ver)}
+    {ver, 0} -> {:ok, String.trim(ver)}
     _ -> :error
   catch
     _, _ -> :error
