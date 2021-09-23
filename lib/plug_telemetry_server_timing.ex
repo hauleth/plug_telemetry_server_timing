@@ -26,8 +26,6 @@ defmodule Plug.Telemetry.ServerTiming do
   ])
   ```
 
-  And then it will be visible in your DevTools.
-
   ### Important
 
   You need to place this plug **BEFORE** `Plug.Telemetry` call as otherwise it
@@ -59,58 +57,89 @@ defmodule Plug.Telemetry.ServerTiming do
   @impl true
   @doc false
   def call(conn, _opts) do
-    Process.put(__MODULE__, {true, %{}})
+    enabled = Application.fetch_env!(:plug_telemetry_server_timing, :enabled)
 
-    register_before_send(conn, &timings/1)
+    if enabled do
+      start = System.monotonic_time(:millisecond)
+      Process.put(__MODULE__, {enabled, []})
+      register_before_send(conn, &timings(&1, start))
+    else
+      conn
+    end
   end
+
+  @type events() :: [event()]
+  @type event() ::
+          {:telemetry.event_name(), atom()}
+          | {:telemetry.event_name(), atom(), keyword() | map()}
 
   @doc """
   Define which events should be available within response headers.
   """
   @spec install(events) :: :ok when events: map() | [{:telemetry.event_name(), atom()}]
   def install(events) do
-    for {name, metric} <- events do
-      :ok = :telemetry.attach({__MODULE__, name, metric}, name, &__MODULE__.__handle__/4, metric)
+    for event <- events,
+        {name, metric, opts} = normalise(event) do
+      :ok =
+        :telemetry.attach(
+          {__MODULE__, name, metric},
+          name,
+          &__MODULE__.__handle__/4,
+          {metric, opts}
+        )
     end
 
     :ok
   end
 
+  defp normalise({name, metric}), do: {name, metric, %{}}
+  defp normalise({name, metric, opts}) when is_map(opts), do: {name, metric, opts}
+  defp normalise({name, metric, opts}) when is_list(opts), do: {name, metric, Map.new(opts)}
+
   @doc false
-  def __handle__(metric_name, measurements, _metadata, metric) do
-    with %{^metric => duration} <- measurements,
-         {true, data} <- Process.get(__MODULE__) do
+  def __handle__(metric_name, measurements, _metadata, {metric, opts}) do
+    with {true, data} <- Process.get(__MODULE__),
+         %{^metric => duration} <- measurements do
+      current = System.monotonic_time(:millisecond)
+
       Process.put(
         __MODULE__,
-        {true, Map.update(data, {metric_name, metric}, duration, &(&1 + duration))}
+        {true, [{metric_name, metric, duration, current, opts} | data]}
       )
+    end
 
-      :ok
-    else
-      _ -> :ok
+    :ok
+  end
+
+  defp timings(conn, start) do
+    case Process.get(__MODULE__) do
+      {true, measurements} ->
+        value =
+          measurements
+          |> Enum.reverse()
+          |> Enum.map_join(",", &encode(&1, start))
+
+        put_resp_header(conn, "server-timing", value)
+
+      _ ->
+        conn
     end
   end
 
-  defp timings(conn) do
-    {_, measurements} = Process.get(__MODULE__, {false, %{}})
+  defp encode({metric_name, metric, measurement, timestamp, opts}, start) do
+    name = Map.get_lazy(opts, :name, fn -> "#{Enum.join(metric_name, ".")}.#{metric}" end)
 
-    if measurements == %{} do
-      conn
-    else
-      put_resp_header(conn, "server-timing", render_measurements(measurements))
-    end
+    data = [
+      {"dur", System.convert_time_unit(measurement, :native, :millisecond)},
+      {"total", System.convert_time_unit(timestamp - start, :native, :millisecond)},
+      {"desc", Map.get(opts, :description)}
+    ]
+
+    IO.iodata_to_binary([name, ?; | build(data)])
   end
 
-  defp render_measurements(measurements) do
-    millis = System.convert_time_unit(1, :millisecond, :native)
-
-    measurements
-    |> Enum.map(fn {{metric_name, metric}, measurement} ->
-      name = "#{Enum.join(metric_name, ".")}.#{metric}"
-      duration = measurement / millis
-
-      "#{name};dur=#{duration}"
-    end)
-    |> Enum.join(",")
-  end
+  defp build([]), do: []
+  defp build([{_name, nil} | rest]), do: build(rest)
+  defp build([{name, value}]), do: [name, ?=, to_string(value)]
+  defp build([{name, value} | rest]), do: [name, ?=, to_string(value), ?; | build(rest)]
 end
