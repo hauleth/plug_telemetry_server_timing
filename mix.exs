@@ -56,8 +56,9 @@ defmodule PlugServerTiming.MixProject do
   end
 
   defp hex_version do
-    with {:ok, terms} <- :file.consult("hex_metadata.config") do
-      Keyword.fetch(terms, "version")
+    with {:ok, terms} <- :file.consult("hex_metadata.config"),
+         {"version", version} <- List.keyfind(terms, "version", 0) do
+      {:ok, version}
     else
       _ -> :error
     end
