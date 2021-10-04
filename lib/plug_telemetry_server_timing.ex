@@ -1,52 +1,10 @@
 defmodule Plug.Telemetry.ServerTiming do
   @behaviour Plug
 
-  @moduledoc """
-  This plug provide support for [`Server-Timing`][st] header that allows to
-  display server-side measurements in browser developer tools and access it
-  programatically via Performance API in JavaScript.
-
-  ## Usage
-
-  Just add it as a plug into your pipeline:
-
-  ```
-  plug Plug.Telemetry.ServerTiming
-  ```
-
-  And call `install/1` with list of `{event_name, measurement}` in your
-  application startup, for example for Phoenix and Ecto application:
-
-  ```
-  Plug.Telemetry.ServerTiming.install([
-    {[:phoenix, :endpoint, :stop], :duration},
-    {[:my_app, :repo, :query], :queue_time},
-    {[:my_app, :repo, :query], :query_time},
-    {[:my_app, :repo, :query], :decode_time}
-  ])
-  ```
-
-  ### Important
-
-  You need to place this plug **BEFORE** `Plug.Telemetry` call as otherwise it
-  will not see it's events (`before_send` callbacks are called in reverse order
-  of declaration, so this one need to be added before `Plug.Telemetry` one.
-
-  ## Caveats
-
-  This will not respond with events that happened in separate processes, only
-  events that happened in the Plug process will be recorded.
-
-  ### WARNING
-
-  Current specification of `Server-Timing` do not provide a way to specify event
-  start time, which mean, that the data displayed in the DevTools isn't trace
-  report (like the content of the "regular" HTTP timings) but raw dump of the data
-  displayed as a bars. This can be a little bit confusing, but right now there is
-  nothing I can do about it.
-
-  [st]: https://w3c.github.io/server-timing/#the-server-timing-header-field
-  """
+  @external_resource "README.md"
+  @moduledoc File.read!("README.md")
+             |> String.split(~r/<!--\s*(BEGIN|END)\s*-->/, parts: 3)
+             |> Enum.at(1)
 
   import Plug.Conn
 
@@ -70,22 +28,46 @@ defmodule Plug.Telemetry.ServerTiming do
 
   @type events() :: [event()]
   @type event() ::
-          {:telemetry.event_name(), atom()}
-          | {:telemetry.event_name(), atom(), keyword() | map()}
+          {:telemetry.event_name(), measurement :: atom()}
+          | {:telemetry.event_name(), measurement :: atom(), opts :: keyword() | map()}
 
   @doc """
   Define which events should be available within response headers.
+
+  Tuple values are:
+
+  1. List of atoms that is the name of the event that we should listen for.
+  2. Atom that contains the name of the metric that should be recorded.
+  3. Optionally keyword list or map with additional options. Currently
+     supported options are:
+
+     - `:name` - alternative name for the metric. By default it will be
+       constructed by joining event name and name of metric with dots.
+       Ex. for `{[:foo, :bar], :baz}` default metric name will be `foo.bar.baz`.
+     - `:description` - string that will be set as `desc`.
+
+  ## Example
+
+  ```elixir
+  #{inspect(__MODULE__)}.install([
+    {[:phoenix, :endpoint, :stop], :duration, description: "Phoenix time"},
+    {[:my_app, :repo, :query], :total_time, description: "DB request"}
+  ])
+  ```
   """
-  @spec install(events) :: :ok when events: map() | [{:telemetry.event_name(), atom()}]
+  @spec install(events()) :: :ok
   def install(events) do
     for event <- events,
-        {name, metric, opts} = normalise(event) do
+        {metric_name, metric, opts} = normalise(event) do
+      name = Map.get_lazy(opts, :name, fn -> "#{Enum.join(metric_name, ".")}.#{metric}" end)
+      description = Map.get(opts, :description, "")
+
       :ok =
         :telemetry.attach(
-          {__MODULE__, name, metric},
-          name,
+          {__MODULE__, name},
+          metric_name,
           &__MODULE__.__handle__/4,
-          {metric, opts}
+          {metric, %{name: name, desc: description}}
         )
     end
 
@@ -97,14 +79,14 @@ defmodule Plug.Telemetry.ServerTiming do
   defp normalise({name, metric, opts}) when is_list(opts), do: {name, metric, Map.new(opts)}
 
   @doc false
-  def __handle__(metric_name, measurements, _metadata, {metric, opts}) do
+  def __handle__(_metric_name, measurements, _metadata, {metric, opts}) do
     with {true, data} <- Process.get(__MODULE__),
          %{^metric => duration} <- measurements do
       current = System.monotonic_time(:millisecond)
 
       Process.put(
         __MODULE__,
-        {true, [{metric_name, metric, duration, current, opts} | data]}
+        {true, [{duration, current, opts} | data]}
       )
     end
 
@@ -126,13 +108,12 @@ defmodule Plug.Telemetry.ServerTiming do
     end
   end
 
-  defp encode({metric_name, metric, measurement, timestamp, opts}, start) do
-    name = Map.get_lazy(opts, :name, fn -> "#{Enum.join(metric_name, ".")}.#{metric}" end)
-
+  defp encode({measurement, timestamp, opts}, start) do
+    %{desc: desc, name: name} = opts
     data = [
       {"dur", System.convert_time_unit(measurement, :native, :millisecond)},
       {"total", System.convert_time_unit(timestamp - start, :native, :millisecond)},
-      {"desc", Map.get(opts, :description)}
+      {"desc", desc}
     ]
 
     IO.iodata_to_binary([name, ?; | build(data)])

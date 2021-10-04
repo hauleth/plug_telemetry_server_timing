@@ -14,8 +14,7 @@ defmodule PlugServerTiming.MixProject do
       source_url: "https://github.com/hauleth/plug_telemetry_server_timing",
       docs: [
         assets: "assets/",
-        extras: ["README.md"],
-        main: "readme"
+        main: "Plug.Telemetry.ServerTiming"
       ],
       package: [
         source_ref: ver,

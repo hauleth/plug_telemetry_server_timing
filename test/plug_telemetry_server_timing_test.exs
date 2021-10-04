@@ -14,7 +14,7 @@ defmodule Plug.ServerTimingTest do
     @subject.install(events)
 
     on_exit(fn ->
-      for %{id: {@subject, _, _} = id} <- :telemetry.list_handlers([]) do
+      for %{id: {@subject, _} = id} <- :telemetry.list_handlers([]) do
         :telemetry.detach(id)
       end
     end)
