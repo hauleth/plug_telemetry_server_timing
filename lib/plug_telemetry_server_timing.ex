@@ -18,7 +18,7 @@ defmodule Plug.Telemetry.ServerTiming do
     enabled = Application.fetch_env!(:plug_telemetry_server_timing, :enabled)
 
     if enabled do
-      start = System.monotonic_time(:millisecond)
+      start = System.monotonic_time()
       Process.put(__MODULE__, {enabled, []})
       register_before_send(conn, &timings(&1, start))
     else
@@ -82,7 +82,7 @@ defmodule Plug.Telemetry.ServerTiming do
   def __handle__(_metric_name, measurements, _metadata, {metric, opts}) do
     with {true, data} <- Process.get(__MODULE__),
          %{^metric => duration} <- measurements do
-      current = System.monotonic_time(:millisecond)
+      current = System.monotonic_time()
 
       Process.put(
         __MODULE__,
@@ -110,13 +110,19 @@ defmodule Plug.Telemetry.ServerTiming do
 
   defp encode({measurement, timestamp, opts}, start) do
     %{desc: desc, name: name} = opts
+
     data = [
-      {"dur", System.convert_time_unit(measurement, :native, :millisecond)},
-      {"total", System.convert_time_unit(timestamp - start, :native, :millisecond)},
+      {"dur", native_to_millisecond(measurement)},
+      {"total", native_to_millisecond(timestamp - start)},
       {"desc", desc}
     ]
 
     IO.iodata_to_binary([name, ?; | build(data)])
+  end
+
+  defp native_to_millisecond(native_duration) do
+    milliseconds = native_duration / System.convert_time_unit(1, :millisecond, :native)
+    :erlang.float_to_binary(milliseconds, decimals: 3)
   end
 
   defp build([]), do: []

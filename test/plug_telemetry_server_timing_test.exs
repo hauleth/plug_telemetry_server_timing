@@ -42,7 +42,7 @@ defmodule Plug.ServerTimingTest do
     :telemetry.execute([:foo], %{bar: dur})
 
     assert [measure] = get_timings(conn)
-    assert {"foo.bar", %{"dur" => "2"}} = measure
+    assert {"foo.bar", %{"dur" => "2.000"}} = measure
   end
 
   @events {[:foo], :bar}
@@ -55,8 +55,8 @@ defmodule Plug.ServerTimingTest do
     :telemetry.execute([:bar], %{baz: 0})
 
     timings = get_timings(conn)
-    assert {"foo.bar", %{"dur" => "2"}} = List.keyfind(timings, "foo.bar", 0)
-    assert {"bar.baz", %{"dur" => "0"}} = List.keyfind(timings, "bar.baz", 0)
+    assert {"foo.bar", %{"dur" => "2.000"}} = List.keyfind(timings, "foo.bar", 0)
+    assert {"bar.baz", %{"dur" => "0.000"}} = List.keyfind(timings, "bar.baz", 0)
   end
 
   @events {[:foo], :bar}
@@ -64,12 +64,12 @@ defmodule Plug.ServerTimingTest do
   test "two measurements for same event are recorded" do
     conn = request()
 
-    dur = System.convert_time_unit(2, :millisecond, :native)
+    dur = System.convert_time_unit(2500, :microsecond, :native)
     :telemetry.execute([:foo], %{bar: dur, baz: 0})
 
     timings = get_timings(conn)
-    assert {"foo.bar", %{"dur" => "2"}} = List.keyfind(timings, "foo.bar", 0)
-    assert {"foo.baz", %{"dur" => "0"}} = List.keyfind(timings, "foo.baz", 0)
+    assert {"foo.bar", %{"dur" => "2.500"}} = List.keyfind(timings, "foo.bar", 0)
+    assert {"foo.baz", %{"dur" => "0.000"}} = List.keyfind(timings, "foo.baz", 0)
   end
 
   @events {[:foo], :bar, description: "Hi"}
