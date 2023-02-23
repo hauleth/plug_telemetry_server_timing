@@ -10,7 +10,9 @@ jobs:
   build:
 
     name: Build and test
-    runs-on: ubuntu-latest
+    # Match Ubuntu release to Erlang release as per
+    # https://github.com/erlef/setup-beam#compatibility-between-operating-system-and-erlangotp
+    runs-on: ubuntu-20.04
 
     steps:
     - uses: actions/checkout@v2
