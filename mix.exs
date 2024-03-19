@@ -39,6 +39,7 @@ defmodule PlugServerTiming.MixProject do
   defp deps do
     [
       {:telemetry, "~> 0.4.0 or ~> 1.0"},
+      {:jason, "~> 1.0"},
       {:plug, "~> 1.0"},
       {:ex_doc, ">= 0.0.0", only: [:dev]},
       {:credo, ">= 0.0.0", only: [:dev]}

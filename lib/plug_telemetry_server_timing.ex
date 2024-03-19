@@ -79,18 +79,27 @@ defmodule Plug.Telemetry.ServerTiming do
   defp normalise({name, metric, opts}) when is_list(opts), do: {name, metric, Map.new(opts)}
 
   @doc false
-  def __handle__(_metric_name, measurements, _metadata, {metric, opts}) do
+  def __handle__(metric_name, measurements, metadata, {metric, opts}) do
     with {true, data} <- Process.get(__MODULE__),
          %{^metric => duration} <- measurements do
       current = System.monotonic_time()
 
       Process.put(
         __MODULE__,
-        {true, [{duration, current, opts} | data]}
+        {true,
+         [{duration, current, update_desc(opts, {metric_name, measurements, metadata})} | data]}
       )
     end
 
     :ok
+  end
+
+  defp update_desc(%{desc: cb} = opts, {name, meas, meta}) when is_function(cb, 3) do
+    %{opts | desc: cb.(name, meas, meta)}
+  end
+
+  defp update_desc(%{desc: desc} = opts, _) when is_binary(desc) do
+    opts
   end
 
   defp timings(conn, start) do
@@ -110,23 +119,20 @@ defmodule Plug.Telemetry.ServerTiming do
 
   defp encode({measurement, timestamp, opts}, start) do
     %{desc: desc, name: name} = opts
+    scale = System.convert_time_unit(1, :millisecond, :native)
 
-    data = [
-      {"dur", native_to_millisecond(measurement)},
-      {"total", native_to_millisecond(timestamp - start)},
+    [
+      name,
+      {"dur", measurement / scale},
+      {"total", (timestamp - start) / scale},
       {"desc", desc}
     ]
-
-    IO.iodata_to_binary([name, ?; | build(data)])
+    |> Enum.flat_map(&build/1)
+    |> Enum.join(";")
   end
 
-  defp native_to_millisecond(native_duration) do
-    milliseconds = native_duration / System.convert_time_unit(1, :millisecond, :native)
-    :erlang.float_to_binary(milliseconds, decimals: 3)
-  end
-
-  defp build([]), do: []
-  defp build([{_name, nil} | rest]), do: build(rest)
-  defp build([{name, value}]), do: [name, ?=, to_string(value)]
-  defp build([{name, value} | rest]), do: [name, ?=, to_string(value), ?; | build(rest)]
+  defp build({_name, empty}) when empty in [nil, ""], do: []
+  defp build({name, value}) when is_number(value), do: [[name, ?=, to_string(value)]]
+  defp build({name, value}), do: [[name, ?=, Jason.encode!(to_string(value))]]
+  defp build(name), do: [name]
 end

@@ -42,7 +42,7 @@ defmodule Plug.ServerTimingTest do
     :telemetry.execute([:foo], %{bar: dur})
 
     assert [measure] = get_timings(conn)
-    assert {"foo.bar", %{"dur" => "2.000"}} = measure
+    assert {"foo.bar", %{"dur" => "2.0"}} = measure
   end
 
   @events {[:foo], :bar}
@@ -55,8 +55,8 @@ defmodule Plug.ServerTimingTest do
     :telemetry.execute([:bar], %{baz: 0})
 
     timings = get_timings(conn)
-    assert {"foo.bar", %{"dur" => "2.000"}} = List.keyfind(timings, "foo.bar", 0)
-    assert {"bar.baz", %{"dur" => "0.000"}} = List.keyfind(timings, "bar.baz", 0)
+    assert {"foo.bar", %{"dur" => "2.0"}} = List.keyfind(timings, "foo.bar", 0)
+    assert {"bar.baz", %{"dur" => "0.0"}} = List.keyfind(timings, "bar.baz", 0)
   end
 
   @events {[:foo], :bar}
@@ -68,8 +68,8 @@ defmodule Plug.ServerTimingTest do
     :telemetry.execute([:foo], %{bar: dur, baz: 0})
 
     timings = get_timings(conn)
-    assert {"foo.bar", %{"dur" => "2.500"}} = List.keyfind(timings, "foo.bar", 0)
-    assert {"foo.baz", %{"dur" => "0.000"}} = List.keyfind(timings, "foo.baz", 0)
+    assert {"foo.bar", %{"dur" => "2.5"}} = List.keyfind(timings, "foo.bar", 0)
+    assert {"foo.baz", %{"dur" => "0.0"}} = List.keyfind(timings, "foo.baz", 0)
   end
 
   @events {[:foo], :bar, description: "Hi"}
@@ -79,7 +79,7 @@ defmodule Plug.ServerTimingTest do
     :telemetry.execute([:foo], %{bar: 0})
 
     timings = get_timings(conn)
-    assert {"foo.bar", %{"desc" => "Hi"}} = List.keyfind(timings, "foo.bar", 0)
+    assert {"foo.bar", %{"desc" => ~S("Hi")}} = List.keyfind(timings, "foo.bar", 0)
   end
 
   @events {[:foo], :bar, name: "qux"}
